@@ -56,8 +56,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	//ŽóM
 	NetWorkRecvUDP(NetUDPHandle, NULL, NULL, Buff, 256, FALSE);
 
-	SetRankings(Buff, 1724);
-	SortScore();
+	
+	/*SetRankings(Buff, 1724);
+	SortScore();*/
 
 	/*csv = new CsvReader(output_csv_file_path_ScoreData);
 	for (int y = 1; y > csv->GetLines(); y++) {
@@ -73,6 +74,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	DrawString(0, 0, Buff, GetColor(255, 255, 255));
 
 	DeleteUDPSocket(NetUDPHandle);
+
+	
 
 	//TotalRecvSize = 0;
 	//while (ProcessMessage() == 0) {
