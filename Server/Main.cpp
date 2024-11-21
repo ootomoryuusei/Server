@@ -21,6 +21,7 @@ namespace {
 	CsvReader* csv;
 	int height, width;
 	std::map <std::string, float> Rankings;
+	std::vector<std::string> RankingData;
 	std::vector<std::pair<float, std::string>> r;
 	std::string output_csv_file_path_ScoreData = "Assets\\Rankings\\RankingsSystem.csv";
 	std::string output_csv_file_path_SortData = "Assets\\Rankings\\RankingsSystemClearSort.csv";
@@ -56,16 +57,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	//éÛêM
 	NetWorkRecvUDP(NetUDPHandle, NULL, NULL, Buff, 256, FALSE);
 
+	csv = new CsvReader(output_csv_file_path_SortData);
+
+	for (int x = 0; x < csv->GetColumns(2); x++) {
+		for (int y = 1; y < csv->GetLines(); y++) {
+			RankingData.push_back(csv->GetString(y, x));
+			if (!(x == csv->GetColumns(2) - 1 && y == csv->GetLines() - 1) && !(x == 0 && y == csv->GetLines() - 1)) {
+				RankingData.push_back(".");
+			}
+			if (x == 0 && y == csv->GetLines() - 1) {
+				RankingData.push_back(":");
+			}
+		}
+	}
 	
 	/*SetRankings(Buff, 1724);
 	SortScore();*/
 
-	/*csv = new CsvReader(output_csv_file_path_ScoreData);
-	for (int y = 1; y > csv->GetLines(); y++) {
-		for (int x = 0; x > csv->GetColumns(2); x++) {
 
-		}
-	}*/
 
 
 	SetBackgroundColor(0, 0, 0);
