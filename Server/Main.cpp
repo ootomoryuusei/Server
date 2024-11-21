@@ -9,6 +9,7 @@
 #include"Engine/CsvReader.h"
 #include<map>
 #include<algorithm>
+#include<sstream>
 
 
 namespace {
@@ -25,6 +26,8 @@ namespace {
 	std::vector<std::pair<float, std::string>> r;
 	std::string output_csv_file_path_ScoreData = "Assets\\Rankings\\RankingsSystem.csv";
 	std::string output_csv_file_path_SortData = "Assets\\Rankings\\RankingsSystemClearSort.csv";
+
+	std::vector<int> RecvData;
 }
 
 void SetRankings(std::string _Pname, float _Pscore);
@@ -57,20 +60,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	//受信
 	NetWorkRecvUDP(NetUDPHandle, NULL, NULL, Buff, 256, FALSE);
 
-	csv = new CsvReader(output_csv_file_path_SortData);
-
-	for (int x = 0; x < csv->GetColumns(2); x++) {
-		for (int y = 1; y < csv->GetLines(); y++) {
-			RankingData.push_back(csv->GetString(y, x));
-			if (!(x == csv->GetColumns(2) - 1 && y == csv->GetLines() - 1) && !(x == 0 && y == csv->GetLines() - 1)) {
-				RankingData.push_back(".");
-			}
-			if (x == 0 && y == csv->GetLines() - 1) {
-				RankingData.push_back(":");
-			}
-		}
-	}
+	std::string line = Buff;
+	std::stringstream line2(line);
+	std::string s;
+	unsigned char ip[4];
 	
+
+	while (std::getline(line2, s, '.')) {
+		RecvData.push_back(atoi(s.c_str()));
+	}
+
+	for (auto itr = RecvData.begin(); itr != RecvData.end(); itr++) {
+		size_t index = std::distance(RecvData.begin(), itr);
+		ip[index] = *itr;
+	}
+
+	//UDP通信用ソケットハンドルを作成
+	NetUDPHandle = MakeUDPSocket(-1);
+	IpAddr.d1 = ip[0];
+	IpAddr.d2 = ip[1];
+	IpAddr.d3 = ip[2];
+	IpAddr.d4 = ip[3];
+
 	/*SetRankings(Buff, 1724);
 	SortScore();*/
 
