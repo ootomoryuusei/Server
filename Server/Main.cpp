@@ -17,6 +17,10 @@ namespace {
 	char Buff[256];
 	const unsigned short SERVER_PORT = 8888;
 	const unsigned short CLIENT_PORT = 8080;
+	std::vector<std::string> rank;
+	std::vector<std::string> name;
+	std::vector<std::string> score;
+	std::string SendData;
 
 	IPDATA IpAddr;
 	
@@ -33,6 +37,7 @@ namespace {
 
 void SetRankings(std::string _Pname, float _Pscore);
 void SortScore();
+void SarchMyRank(std::string myName);
 
 // エントリーポイント
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -127,7 +132,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		IpAddr.d3 = ip[2];
 		IpAddr.d4 = ip[3];
 
-		csv = new CsvReader(output_csv_file_path_SortData);
+		/*csv = new CsvReader(output_csv_file_path_SortData);
 
 		height = csv->GetLines();
 		if (height > 1) {
@@ -148,11 +153,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		for (auto itr : RankingData) {
 			rData += itr;
-		}
+		}*/
+		SarchMyRank(N);
 		// 文字列の送信
-		NetWorkSendUDP(NetUDPHandle, IpAddr, CLIENT_PORT,rData.c_str(),rData.size());
+		NetWorkSendUDP(NetUDPHandle, IpAddr, CLIENT_PORT,SendData.c_str(), SendData.size());
 
-		DrawString(0, 20*Ycount,rData.c_str(), GetColor(255, 255, 255));
+		DrawString(0, 20*Ycount,SendData.c_str(), GetColor(255, 255, 255));
 		Ycount++;
 
 		/*SetBackgroundColor(0, 0, 0);
@@ -164,6 +170,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		RankingData.clear();
 		Rankings.clear();
 		r.clear();
+		name.clear();
+		rank.clear();
+		score.clear();
 	}
 		DxLib_End();				// ＤＸライブラリ使用の終了処理
 	
@@ -204,22 +213,61 @@ void SortScore()
 	ofs_csv_file.close();
 }
 
-void MakeSendData(std::string myName) {
+void SarchMyRank(std::string myName) {
 	int myRank = 0;
+	int rTop = 1;
+	int rLow = 0;
 	int myHei = 0;
 	int myLow = 0;
-	csv = new CsvReader(output_csv_file_path_SortData);
 
+	csv = new CsvReader(output_csv_file_path_SortData);
 	for (int h = 1; h < csv->GetLines(); h++) {
 		if (myName == csv->GetString(h, 0)) {
 			myRank = h;
 		}
 	}
+	rLow = csv->GetLines() - 1;
 
-	myHei = myRank - 2;
-	myLow = (csv->GetLines() - 1) - myRank;
+	myHei = myRank - rTop;
+	int fRank = myHei - 3;
+	if (fRank < 1) {
+		fRank = 1;
+	}
+	int length = fRank + 5;
+	if (length > csv->GetLines() - 1) {
+		int over = length - (csv->GetLines());
+		length = length - over;
+	}
+	for (int i = fRank; i < length; i++) {
+		name.push_back(csv->GetString(i, 0));
+		score.push_back(csv->GetString(i, 1));
+		rank.push_back(std::to_string(i));
+	}
 
+	std::string nData;
+	std::string sData;
+	std::string rData;
 
+	for (auto itr = name.begin(); itr != name.end(); itr++) {
+		nData += *itr;
+		if (!(itr == name.end() - 1)) {
+			nData += ".";
+		}
+	}
 
+	for (auto itr = score.begin(); itr != score.end(); itr++) {
+		sData += *itr;
+		if (!(itr == score.end() - 1)) {
+			sData += ".";
+		}
+	}
 
+	for (auto itr = rank.begin(); itr != rank.end(); itr++) {
+		rData += *itr;
+		if (!(itr == rank.end() - 1)) {
+			rData += ".";
+		}
+	}
+
+	SendData = rData + ":" + nData + ":" + sData;
 }
