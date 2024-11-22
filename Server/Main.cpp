@@ -16,6 +16,7 @@ namespace {
 	BYTE Data[500];
 	char Buff[256];
 	const unsigned short SERVER_PORT = 8888;
+	const unsigned short CLIENT_PORT = 8080;
 
 	IPDATA IpAddr;
 	
@@ -38,86 +39,134 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
 	SetWindowText("タイトル");
 
+	int Ycount = 0;
 	int NetUDPHandle;
 	int RecvSize, TotalRecvSize;
 
-	SetGraphMode(800,600, 32);
-	ChangeWindowMode(TRUE); // Windowモードの場合
+	while (ProcessMessage() == 0) {
+		SetGraphMode(800, 600, 32);
+		ChangeWindowMode(TRUE); // Windowモードの場合
 
-	if (DxLib_Init() == -1)		// ＤＸライブラリ初期化処理
-	{
-		return -1;			// エラーが起きたら直ちに終了
-	}
-
-	NetUDPHandle = MakeUDPSocket(SERVER_PORT); //UDP通信用のソケットハンドルの作成
-
-	DrawString(0, 0, "受信待ち", GetColor(255, 255, 255));
-
-	while (CheckNetWorkRecvUDP(NetUDPHandle) == FALSE) {
-		if (ProcessMessage() < 0) break;
-	}
+		if (DxLib_Init() == -1)		// ＤＸライブラリ初期化処理
+		{
+			return -1;			// エラーが起きたら直ちに終了
+		}
 	
-	//受信
-	NetWorkRecvUDP(NetUDPHandle, NULL, NULL, Buff, 256, FALSE);
+		NetUDPHandle = MakeUDPSocket(SERVER_PORT); //UDP通信用のソケットハンドルの作成
 
-	std::string line = Buff;
-	std::stringstream line2(line);
-	std::string s;
-	unsigned char ip[4];
-	
+		DrawString(0, 20*Ycount, "受信待ち", GetColor(255, 255, 255));
+		Ycount++;
 
-	while (std::getline(line2, s, '.')) {
-		RecvData.push_back(atoi(s.c_str()));
+		while (CheckNetWorkRecvUDP(NetUDPHandle) == FALSE) {
+			if (ProcessMessage() < 0) break;
+		}
+
+		//受信
+		NetWorkRecvUDP(NetUDPHandle, NULL, NULL, Buff, 256, FALSE);
+
+		std::string RecvBuff = Buff;
+		std::stringstream RLine(RecvBuff);
+		std::string c;
+		std::vector<std::string> RvBuff;
+
+
+		while (std::getline(RLine, c, ':')) {
+			RvBuff.push_back(c);
+		}
+
+		std::stringstream NandS(RvBuff[0]);
+		std::string N;
+		float S;
+		int count = 0;
+
+		while (std::getline(NandS, c, '.')) {
+			if (count == 0) {
+				N = c;
+				
+			}
+			if (count == 1) {
+				S = atof(c.c_str());
+			}
+			count++;
+		}
+
+		SetRankings(N,S);
+		SortScore();
+
+		DrawString(0, 20 * Ycount, "受信しました", GetColor(255, 255, 255));
+		Ycount++;
+		DrawString(0, 20 * Ycount,RvBuff[0].c_str(), GetColor(255, 255, 255));
+		Ycount++;
+
+		IPDATA IPA;
+		GetNetWorkIP(NetUDPHandle, &IPA);
+
+		DeleteUDPSocket(NetUDPHandle);
+
+
+		
+
+		std::string line = RvBuff[1];
+		std::stringstream line2(line);
+		std::string s;
+		unsigned char ip[4];
+
+		while (std::getline(line2, s, '.')) {
+			RecvData.push_back(atoi(s.c_str()));
+		}
+
+		for (auto itr = RecvData.begin(); itr != RecvData.end(); itr++) {
+			size_t index = std::distance(RecvData.begin(), itr);
+			ip[index] = *itr;
+		}
+
+		//UDP通信用ソケットハンドルを作成
+		NetUDPHandle = MakeUDPSocket(-1);
+		IpAddr.d1 = ip[0];
+		IpAddr.d2 = ip[1];
+		IpAddr.d3 = ip[2];
+		IpAddr.d4 = ip[3];
+
+		csv = new CsvReader(output_csv_file_path_SortData);
+
+		height = csv->GetLines();
+		if (height > 1) {
+			for (int x = 0; x < csv->GetColumns(0); x++) {
+				for (int y = 1; y < csv->GetLines(); y++) {
+					RankingData.push_back(csv->GetString(y, x));
+					if (!(x == csv->GetColumns(0) - 1 && y == csv->GetLines() - 1) && !(x == 0 && y == csv->GetLines() - 1)) {
+						RankingData.push_back(".");
+					}
+					if (x == 0 && y == csv->GetLines() - 1) {
+						RankingData.push_back(":");
+					}
+				}
+			}
+		}
+
+		std::string rData;
+
+		for (auto itr : RankingData) {
+			rData += itr;
+		}
+		// 文字列の送信
+		NetWorkSendUDP(NetUDPHandle, IpAddr, CLIENT_PORT,rData.c_str(),rData.size());
+
+		DrawString(0, 20*Ycount,rData.c_str(), GetColor(255, 255, 255));
+		Ycount++;
+
+		/*SetBackgroundColor(0, 0, 0);
+		SetDrawScreen(DX_SCREEN_BACK);*/
+		/*ClearDrawScreen();*/
+		
+
+		DeleteUDPSocket(NetUDPHandle);
+		RankingData.clear();
+		Rankings.clear();
+		r.clear();
 	}
-
-	for (auto itr = RecvData.begin(); itr != RecvData.end(); itr++) {
-		size_t index = std::distance(RecvData.begin(), itr);
-		ip[index] = *itr;
-	}
-
-	//UDP通信用ソケットハンドルを作成
-	NetUDPHandle = MakeUDPSocket(-1);
-	IpAddr.d1 = ip[0];
-	IpAddr.d2 = ip[1];
-	IpAddr.d3 = ip[2];
-	IpAddr.d4 = ip[3];
-
-	/*SetRankings(Buff, 1724);
-	SortScore();*/
-
-
-
-
-	SetBackgroundColor(0, 0, 0);
-	SetDrawScreen(DX_SCREEN_BACK);
-	/*ClearDrawScreen();*/
-	DrawString(0, 0, Buff, GetColor(255, 255, 255));
-
-	DeleteUDPSocket(NetUDPHandle);
-
+		DxLib_End();				// ＤＸライブラリ使用の終了処理
 	
-
-	//TotalRecvSize = 0;
-	//while (ProcessMessage() == 0) {
-
-
-	//	
-	//	ClearDrawScreen();
-
-	//	//データ受信
-	//	RecvSize = NetWorkRecvUDP(NetUDPHandle, NULL, NULL, Data, sizeof(Data), FALSE);
-	//	if (RecvSize >= 0) {
-	//		TotalRecvSize += RecvSize;
-	//	}
-	//	DrawFormatString(0, 0, GetColor(255, 255, 255), "TotalRecvSize:%d", TotalRecvSize);
-
-	//	ScreenFlip();
-
-	//	if (DxLib::ProcessMessage() == -1 || CheckHitKey(KEY_INPUT_ESCAPE) == 1)
-	//		break;
-	//}
-	DxLib_End();				// ＤＸライブラリ使用の終了処理
-
 	return 0;
 }
 
@@ -145,12 +194,32 @@ void SortScore()
 		sort(r.rbegin(), r.rend());
 	}
 
-	std::ofstream ofs_csv_file(output_csv_file_path_SortData);
+	std::ofstream ofs_csv_file(output_csv_file_path_SortData, std::ios::out);
 	ofs_csv_file << "PlayerName" << "," << "PlayerScore";
 	ofs_csv_file << std::endl;
 	for (auto itr = r.begin(); itr != r.end(); ++itr) {
 		ofs_csv_file << itr->second << "," << itr->first;
 		ofs_csv_file << std::endl;
-		ofs_csv_file.close();
 	}
+	ofs_csv_file.close();
+}
+
+void MakeSendData(std::string myName) {
+	int myRank = 0;
+	int myHei = 0;
+	int myLow = 0;
+	csv = new CsvReader(output_csv_file_path_SortData);
+
+	for (int h = 1; h < csv->GetLines(); h++) {
+		if (myName == csv->GetString(h, 0)) {
+			myRank = h;
+		}
+	}
+
+	myHei = myRank - 2;
+	myLow = (csv->GetLines() - 1) - myRank;
+
+
+
+
 }
