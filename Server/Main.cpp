@@ -3,13 +3,13 @@
 ///  2023/12/6 花井
 /// </summary>
 
-#include"DxLib.h"
 #include <string>
 #include<fstream>
 #include"Engine/CsvReader.h"
 #include<map>
 #include<algorithm>
 #include<sstream>
+#include "DxLib.h"
 
 
 namespace {
@@ -29,15 +29,15 @@ namespace {
 	std::map <std::string, float> Rankings;
 	std::vector<std::string> RankingData;
 	std::vector<std::pair<float, std::string>> r;
-	std::string output_csv_file_path_ScoreData = "Assets\\Rankings\\RankingsSystem.csv";
-	std::string output_csv_file_path_SortData = "Assets\\Rankings\\RankingsSystemClearSort.csv";
+	std::string output_csv_file_path_ScoreData = "Assets\\Rankings\\RankingsSystem";
+	std::string output_csv_file_path_SortData = "Assets\\Rankings\\RankingsSystemClearSort";
 
 	std::vector<int> RecvData;
 }
 
-void SetRankings(std::string _Pname, float _Pscore);
-void SortScore();
-void SarchMyRank(std::string myName);
+void SetRankings(std::string _mapnum,std::string _Pname, float _Pscore);
+void SortScore(std::string _mapnum);
+void SarchMyRank(std::string _mapnum, std::string myName);
 
 // エントリーポイント
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -49,6 +49,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	int Ycount = 0;
 	int NetUDPHandle;
 	int RecvSize, TotalRecvSize;
+	SetAlwaysRunFlag(TRUE);
 
 	if (DxLib_Init() == -1)		// ＤＸライブラリ初期化処理
 	{
@@ -86,29 +87,36 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		std::string c;
 		std::vector<std::string> RvBuff;
 
-
+		//名前スコアとIPを分離
 		while (std::getline(RLine, c, ':')) {
 			RvBuff.push_back(c);
 		}
 
 		std::stringstream NandS(RvBuff[0]);
 		std::string N;
-		float S;
+		float S = -1;
 		int count = 0;
+		std::string mapnum;
 
+		//名前とIPを分離
 		while (std::getline(NandS, c, '.')) {
 			if (count == 0) {
+				mapnum = c;
+			}
+			if (count == 1) {
 				N = c;
 				
 			}
-			if (count == 1) {
+			if (count == 2) {
 				S = atof(c.c_str());
 			}
 			count++;
 		}
 
-		SetRankings(N,S);
-		SortScore();
+		//ランキングに挿入
+		SetRankings(mapnum, N, S);
+		
+		SortScore(mapnum);
 
 		DrawString(0, 20 * Ycount, "受信しました", GetColor(255, 255, 255));
 		Ycount++;
@@ -122,7 +130,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
 		
-
+		//IPの分解・構築
 		std::string line = RvBuff[1];
 		std::stringstream line2(line);
 		std::string s;
@@ -166,7 +174,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		for (auto itr : RankingData) {
 			rData += itr;
 		}*/
-		SarchMyRank(N);
+		SarchMyRank(mapnum,N);
 		// 文字列の送信
 		NetWorkSendUDP(NetUDPHandle, IpAddr, CLIENT_PORT,SendData.c_str(), SendData.size());
 
@@ -191,17 +199,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	return 0;
 }
 
-void SetRankings(std::string _Pname, float _Pscore)
+void SetRankings(std::string _mapnum , std::string _Pname, float _Pscore)
 {
-	std::ofstream ofs_csv_file(output_csv_file_path_ScoreData, std::ios::app);
+	std::ofstream ofs_csv_file(output_csv_file_path_ScoreData + _mapnum + ".csv", std::ios::app);
 	ofs_csv_file << _Pname << "," << _Pscore;
 	ofs_csv_file << std::endl;
 	ofs_csv_file.close();
 }
 
-void SortScore()
+void SortScore(std::string _mapnum)
 {
-	csv = new CsvReader(output_csv_file_path_ScoreData);
+	csv = new CsvReader(output_csv_file_path_ScoreData + _mapnum + ".csv");
 	height = csv->GetLines();
 	if (height > 1) {
 		for (int h = 1; h < height; h++) {
@@ -215,7 +223,12 @@ void SortScore()
 		sort(r.rbegin(), r.rend());
 	}
 
-	std::ofstream ofs_csv_file(output_csv_file_path_SortData, std::ios::out);
+	if (csv != nullptr) {
+		delete csv;
+		csv = nullptr;
+	}
+
+	std::ofstream ofs_csv_file(output_csv_file_path_SortData + _mapnum + ".csv", std::ios::out);
 	ofs_csv_file << "PlayerName" << "," << "PlayerScore";
 	ofs_csv_file << std::endl;
 	for (auto itr = r.begin(); itr != r.end(); ++itr) {
@@ -225,14 +238,14 @@ void SortScore()
 	ofs_csv_file.close();
 }
 
-void SarchMyRank(std::string myName) {
+void SarchMyRank(std::string _mapnum,std::string myName) {
 	int myRank = 0;
 	int rTop = 1;
 	int rLow = 0;
 	int myHei = 0;
 	int myLow = 0;
 
-	csv = new CsvReader(output_csv_file_path_SortData);
+	csv = new CsvReader(output_csv_file_path_SortData + _mapnum + ".csv");
 	for (int h = 1; h < csv->GetLines(); h++) {
 		if (myName == csv->GetString(h, 0)) {
 			myRank = h;
@@ -254,6 +267,11 @@ void SarchMyRank(std::string myName) {
 		name.push_back(csv->GetString(i, 0));
 		score.push_back(csv->GetString(i, 1));
 		rank.push_back(std::to_string(i));
+	}
+
+	if (csv != nullptr) {
+		delete csv;
+		csv = nullptr;
 	}
 
 	std::string nData;
