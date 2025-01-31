@@ -43,19 +43,31 @@ void SarchMyRank(std::string myName);
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	SetWindowText("タイトル");
+	SetGraphMode(800, 600, 32);
+	ChangeWindowMode(TRUE);
 
 	int Ycount = 0;
 	int NetUDPHandle;
 	int RecvSize, TotalRecvSize;
 
-	while (ProcessMessage() == 0) {
-		SetGraphMode(800, 600, 32);
-		ChangeWindowMode(TRUE); // Windowモードの場合
+	if (DxLib_Init() == -1)		// ＤＸライブラリ初期化処理
+	{
+		return -1;			// エラーが起きたら直ちに終了
+	}
 
-		if (DxLib_Init() == -1)		// ＤＸライブラリ初期化処理
-		{
-			return -1;			// エラーが起きたら直ちに終了
-		}
+	SetBackgroundColor(0, 0, 0);
+	SetDrawScreen(DX_SCREEN_BACK);
+	SetAlwaysRunFlag(1);
+
+	while (ProcessMessage() == 0) {
+		//SetGraphMode(800, 600, 32);
+		//ChangeWindowMode(TRUE); // Windowモードの場合
+
+		//if (DxLib_Init() == -1)		// ＤＸライブラリ初期化処理
+		//{
+		//	return -1;			// エラーが起きたら直ちに終了
+		//}
+		ClearDrawScreen();
 	
 		NetUDPHandle = MakeUDPSocket(SERVER_PORT); //UDP通信用のソケットハンドルの作成
 
@@ -173,9 +185,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		name.clear();
 		rank.clear();
 		score.clear();
+		ScreenFlip();
 	}
-		DxLib_End();				// ＤＸライブラリ使用の終了処理
-	
+	DxLib_End();				// ＤＸライブラリ使用の終了処理
 	return 0;
 }
 
